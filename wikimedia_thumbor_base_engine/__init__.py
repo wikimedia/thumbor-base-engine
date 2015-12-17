@@ -11,12 +11,22 @@
 
 # Base engine, not to be used directly, has to be extended
 
+import errno
 import os
 import subprocess
 from tempfile import NamedTemporaryFile
 
 from thumbor.engines.pil import Engine as PilEngine
 from thumbor.utils import logger
+
+
+def rm_f(path):
+    """Remove a file if it exists."""
+    try:
+        os.unlink(path)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
 
 
 class BaseWikimediaEngine(PilEngine):
@@ -45,8 +55,8 @@ class BaseWikimediaEngine(PilEngine):
         self.source.close()
 
     def cleanup_temp_files(self):
-        os.remove(self.source.name)
-        os.remove(self.destination.name)
+        rm_f(self.source.name)
+        rm_f(self.destination.name)
 
     def exec_command(self, command):
         self.command(command)
@@ -96,6 +106,12 @@ class BaseWikimediaEngine(PilEngine):
 
         if p.returncode != 0:
             self.cleanup_temp_files()
-            raise Exception('CommandError')
+            raise Exception(
+                'CommandError',
+                wrapped_command,
+                stdout,
+                stderr,
+                p.returncode
+            )
 
         return stdout
